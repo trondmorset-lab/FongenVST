@@ -11,7 +11,7 @@ static NormalisableRange<float> logRange (float lo, float hi)
              [] (float s, float e, float v) { return jlimit (s, e, v); } };
 }
 
-AudioProcessorValueTreeState::ParameterLayout FjordAudioProcessor::createLayout()
+AudioProcessorValueTreeState::ParameterLayout FongenAudioProcessor::createLayout()
 {
     AudioProcessorValueTreeState::ParameterLayout layout;
     const StringArray types { "Bell", "Low Shelf", "High Shelf", "Low Cut", "High Cut", "Notch" };
@@ -23,7 +23,7 @@ AudioProcessorValueTreeState::ParameterLayout FjordAudioProcessor::createLayout(
     auto hz = [] (float v, int) { return v < 1000 ? String (roundToInt (v)) + " Hz" : String (v / 1000.0f, 2) + " kHz"; };
     auto db = [] (float v, int) { return String (v, 1) + " dB"; };
 
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
     {
         auto grp = std::make_unique<AudioProcessorParameterGroup> ("band" + String (b + 1), "Band " + String (b + 1), "|");
         auto pid = [b] (const char* n) { return ParameterID { ids::band (b, n), 1 }; };
@@ -70,13 +70,13 @@ AudioProcessorValueTreeState::ParameterLayout FjordAudioProcessor::createLayout(
     return layout;
 }
 
-FjordAudioProcessor::FjordAudioProcessor()
+FongenAudioProcessor::FongenAudioProcessor()
     : AudioProcessor (BusesProperties().withInput ("Input", AudioChannelSet::stereo(), true)
                                        .withOutput ("Output", AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "FjordDynEQ", createLayout())
+      apvts (*this, nullptr, "FongenDynEQ", createLayout())
 {
     const char* names[9] = { ids::on, ids::type, ids::freq, ids::gain, ids::q, ids::range, ids::thresh, ids::attack, ids::release };
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
         for (int i = 0; i < 9; ++i)
             bandPtrs[(size_t) b].p[i] = apvts.getRawParameterValue (ids::band (b, names[i]));
 
@@ -88,14 +88,14 @@ FjordAudioProcessor::FjordAudioProcessor()
     for (auto& r : resReductionDb) r.store (0);
 }
 
-bool FjordAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool FongenAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     const auto out = layouts.getMainOutputChannelSet();
     return (out == AudioChannelSet::mono() || out == AudioChannelSet::stereo())
         && out == layouts.getMainInputChannelSet();
 }
 
-void FjordAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void FongenAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     currentSampleRate.store (sampleRate);
     for (auto& b : bands) b.prepare (sampleRate);
@@ -111,7 +111,7 @@ void FjordAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     setLatencySamples (0);   // alt er IIR: ingen latens, ingen bypass-forsinkelse nødvendig
 }
 
-void FjordAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
+void FongenAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
 {
     ScopedNoDenormals noDenormals;
     const int numCh = jmin (2, getTotalNumInputChannels());
@@ -120,19 +120,19 @@ void FjordAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
     if (n == 0 || numCh == 0) return;
 
     // Parametere én gang per blokk
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
     {
         auto& pp = bandPtrs[(size_t) b].p;
-        fjord::BandParams bp;
+        fongen::BandParams bp;
         bp.on = pp[0]->load() > 0.5f;
-        bp.type = (fjord::BandType) jlimit (0, 5, (int) pp[1]->load());
+        bp.type = (fongen::BandType) jlimit (0, 5, (int) pp[1]->load());
         bp.freq = pp[2]->load(); bp.gainDb = pp[3]->load(); bp.q = pp[4]->load();
         bp.rangeDb = pp[5]->load(); bp.thresholdDb = pp[6]->load();
         bp.attackMs = pp[7]->load(); bp.releaseMs = pp[8]->load();
         bands[(size_t) b].setParams (bp);
     }
     {
-        fjord::ResParams rp;
+        fongen::ResParams rp;
         rp.on = resPtrs[0]->load() > 0.5f; rp.depthDb = resPtrs[1]->load(); rp.selectivityDb = resPtrs[2]->load();
         rp.sharpness = resPtrs[3]->load() * 0.01f; rp.attackMs = resPtrs[4]->load(); rp.releaseMs = resPtrs[5]->load();
         rp.lowHz = resPtrs[6]->load(); rp.highHz = resPtrs[7]->load();
@@ -171,24 +171,24 @@ void FjordAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
 
     pushMono (postFifo);
 
-    for (int b = 0; b < fjord::kNumBands; ++b) bandGainDb[(size_t) b].store (bands[(size_t) b].getCurrentGainDb(), std::memory_order_relaxed);
-    for (int b = 0; b < fjord::kNumResBands; ++b) resReductionDb[(size_t) b].store (res.getReductionDb (b), std::memory_order_relaxed);
+    for (int b = 0; b < fongen::kNumBands; ++b) bandGainDb[(size_t) b].store (bands[(size_t) b].getCurrentGainDb(), std::memory_order_relaxed);
+    for (int b = 0; b < fongen::kNumResBands; ++b) resReductionDb[(size_t) b].store (res.getReductionDb (b), std::memory_order_relaxed);
 }
 
-AudioProcessorEditor* FjordAudioProcessor::createEditor() { return new FjordAudioProcessorEditor (*this); }
+AudioProcessorEditor* FongenAudioProcessor::createEditor() { return new FongenAudioProcessorEditor (*this); }
 
-void FjordAudioProcessor::getStateInformation (MemoryBlock& destData)
+void FongenAudioProcessor::getStateInformation (MemoryBlock& destData)
 {
     auto state = apvts.copyState();
     state.setProperty ("stateVersion", 1, nullptr);
     if (auto xml = state.createXml()) copyXmlToBinary (*xml, destData);
 }
 
-void FjordAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void FongenAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
             apvts.replaceState (ValueTree::fromXml (*xml));
 }
 
-AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new FjordAudioProcessor(); }
+AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new FongenAudioProcessor(); }

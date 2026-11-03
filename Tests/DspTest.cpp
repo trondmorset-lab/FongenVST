@@ -5,7 +5,7 @@
 #include <random>
 #include <vector>
 
-using namespace fjord;
+using namespace fongen;
 static int failures = 0;
 static void check (bool ok, const char* what, double val = 0)
 {

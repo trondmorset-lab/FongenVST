@@ -1,5 +1,5 @@
 #pragma once
-// Fjord DynEQ – DSP-kjerne (ingen JUCE-avhengighet, testes separat i Tests/DspTest.cpp)
+// Fongen DynEQ – DSP-kjerne (ingen JUCE-avhengighet, testes separat i Tests/DspTest.cpp)
 //
 // Alt er IIR og null latens:
 //  * Seks dynamiske EQ-bånd basert på Simpers trapesintegrerte SVF. Gainen oppdateres
@@ -18,7 +18,7 @@
  #pragma GCC diagnostic ignored "-Wswitch-enum"
 #endif
 
-namespace fjord
+namespace fongen
 {
 constexpr double kPi = 3.14159265358979323846;
 constexpr int kNumBands = 6;
@@ -406,7 +406,7 @@ private:
     int counter = 0;
 };
 
-} // namespace fjord
+} // namespace fongen
 
 #if defined(__clang__) || defined(__GNUC__)
  #pragma GCC diagnostic pop

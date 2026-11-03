@@ -23,37 +23,37 @@ jobs:
           key: juce-9.0.5-${{ runner.os }}
 
       - name: Configure
-        run: cmake -B build -G Xcode -DFJORD_BUILD_TESTS=ON
+        run: cmake -B build -G Xcode -DFONGEN_BUILD_TESTS=ON
 
       - name: Build
-        run: cmake --build build --config Release --target FjordDynEQ_VST3 FjordDynEQ_AU DspTest -- -quiet
+        run: cmake --build build --config Release --target FongenDynEQ_VST3 FongenDynEQ_AU DspTest -- -quiet
 
       - name: DSP-test
         run: ./build/Release/DspTest
 
       - name: Ad hoc-signering (kreves for Apple Silicon)
         run: |
-          codesign --force --deep --sign - "build/FjordDynEQ_artefacts/Release/VST3/Fjord DynEQ.vst3"
-          codesign --force --deep --sign - "build/FjordDynEQ_artefacts/Release/AU/Fjord DynEQ.component"
+          codesign --force --deep --sign - "build/FongenDynEQ_artefacts/Release/VST3/Fongen DynEQ.vst3"
+          codesign --force --deep --sign - "build/FongenDynEQ_artefacts/Release/AU/Fongen DynEQ.component"
 
       - name: Valider med pluginval
         run: |
           curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
           unzip -q pluginval.zip
           pluginval.app/Contents/MacOS/pluginval --strictness-level 5 --skip-gui-tests \
-            --validate "build/FjordDynEQ_artefacts/Release/VST3/Fjord DynEQ.vst3"
+            --validate "build/FongenDynEQ_artefacts/Release/VST3/Fongen DynEQ.vst3"
 
       - name: Pakk zip
         run: |
           mkdir -p dist
-          cp -R "build/FjordDynEQ_artefacts/Release/VST3/Fjord DynEQ.vst3" dist/
-          cp -R "build/FjordDynEQ_artefacts/Release/AU/Fjord DynEQ.component" dist/
-          ditto -c -k --keepParent dist FjordDynEQ-macOS.zip
+          cp -R "build/FongenDynEQ_artefacts/Release/VST3/Fongen DynEQ.vst3" dist/
+          cp -R "build/FongenDynEQ_artefacts/Release/AU/Fongen DynEQ.component" dist/
+          ditto -c -k --keepParent dist FongenDynEQ-macOS.zip
 
       - name: Lag installasjonsfil (.pkg)
         run: |
-          VERSION=$(sed -n 's/^project(FjordDynEQ VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
-          ID=no.trondmorset.fjorddyneq
+          VERSION=$(sed -n 's/^project(FongenDynEQ VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          ID=no.trondmorset.fongendyneq
 
           # Én pakke per format, hver med sin installasjonsmappe
           make_component () {   # $1 = kilde-bundle, $2 = navn, $3 = installasjonsmappe
@@ -65,27 +65,27 @@ jobs:
             pkgbuild --root "pkgroot/$2" --component-plist "$2.plist" \
               --identifier "$ID.$2" --version "$VERSION" --install-location "$3" "$2.pkg"
           }
-          make_component "build/FjordDynEQ_artefacts/Release/VST3/Fjord DynEQ.vst3"     vst3 "/Library/Audio/Plug-Ins/VST3"
-          make_component "build/FjordDynEQ_artefacts/Release/AU/Fjord DynEQ.component" au   "/Library/Audio/Plug-Ins/Components"
+          make_component "build/FongenDynEQ_artefacts/Release/VST3/Fongen DynEQ.vst3"     vst3 "/Library/Audio/Plug-Ins/VST3"
+          make_component "build/FongenDynEQ_artefacts/Release/AU/Fongen DynEQ.component" au   "/Library/Audio/Plug-Ins/Components"
 
           # Samle til én installer med tittel
           productbuild --synthesize --package vst3.pkg --package au.pkg distribution.xml
-          sed -i '' 's#<installer-gui-script minSpecVersion="[0-9]*">#&<title>Fjord DynEQ</title>#' distribution.xml
-          productbuild --distribution distribution.xml --package-path . "FjordDynEQ-$VERSION-macOS.pkg"
-          cp "FjordDynEQ-$VERSION-macOS.pkg" FjordDynEQ-macOS.pkg
+          sed -i '' 's#<installer-gui-script minSpecVersion="[0-9]*">#&<title>Fongen DynEQ</title>#' distribution.xml
+          productbuild --distribution distribution.xml --package-path . "FongenDynEQ-$VERSION-macOS.pkg"
+          cp "FongenDynEQ-$VERSION-macOS.pkg" FongenDynEQ-macOS.pkg
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FjordDynEQ-macOS
+          name: FongenDynEQ-macOS
           path: |
-            FjordDynEQ-macOS.zip
-            FjordDynEQ-macOS.pkg
+            FongenDynEQ-macOS.zip
+            FongenDynEQ-macOS.pkg
 
       - name: Release (kun ved tag)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" FjordDynEQ-macOS.pkg FjordDynEQ-macOS.zip \
-            --title "Fjord DynEQ ${{ github.ref_name }}" \
+          gh release create "${{ github.ref_name }}" FongenDynEQ-macOS.pkg FongenDynEQ-macOS.zip \
+            --title "Fongen DynEQ ${{ github.ref_name }}" \
             --notes "VST3 og AU for macOS (Apple Silicon + Intel). Dobbeltklikk .pkg for å installere, eller bruk zip-fila og kopier pluginene manuelt."

@@ -42,11 +42,11 @@ private:
     std::atomic<int> write { 0 }, read { 0 };
 };
 
-class FjordAudioProcessor : public juce::AudioProcessor
+class FongenAudioProcessor : public juce::AudioProcessor
 {
 public:
-    FjordAudioProcessor();
-    ~FjordAudioProcessor() override = default;
+    FongenAudioProcessor();
+    ~FongenAudioProcessor() override = default;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -57,7 +57,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "Fjord DynEQ"; }
+    const juce::String getName() const override { return "Fongen DynEQ"; }
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
@@ -77,23 +77,23 @@ public:
 
     // Til GUI
     AnalyserFifo preFifo, postFifo;
-    std::array<std::atomic<float>, fjord::kNumBands> bandGainDb {};
-    std::array<std::atomic<float>, fjord::kNumResBands> resReductionDb {};
+    std::array<std::atomic<float>, fongen::kNumBands> bandGainDb {};
+    std::array<std::atomic<float>, fongen::kNumResBands> resReductionDb {};
     std::atomic<double> currentSampleRate { 48000.0 };
     float getResCentreHz (int b) const noexcept { return res.getCentreHz (b); }
     float getResCutQ() const noexcept { return res.getCutQ(); }
 
 private:
     struct BandPtrs { std::atomic<float>* p[9]; };
-    std::array<BandPtrs, fjord::kNumBands> bandPtrs {};
+    std::array<BandPtrs, fongen::kNumBands> bandPtrs {};
     std::atomic<float>* resPtrs[8] {};
     std::atomic<float>* outputPtr = nullptr;
 
-    std::array<fjord::DynamicBand, fjord::kNumBands> bands;
-    fjord::ResonanceSuppressor res;
+    std::array<fongen::DynamicBand, fongen::kNumBands> bands;
+    fongen::ResonanceSuppressor res;
     juce::dsp::Gain<float> outGain;
     juce::HeapBlock<float> monoScratch;
     int scratchSize = 0;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FjordAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FongenAudioProcessor)
 };

@@ -1,4 +1,6 @@
-# Fjord DynEQ
+<img src="assets/fongen-logo-256.png" width="128" alt="Fongen DynEQ-logo">
+
+# Fongen DynEQ
 
 Dynamisk EQ og resonansdemper i VST3-format (og AU på Mac), i samme ånd som FabFilter Pro-Q og Soothe. Alt er IIR, så pluginen har **0 samples latens** og kan brukes live. Bygget med JUCE 9.0.5.
 
@@ -58,12 +60,12 @@ Push repoet til GitHub. Workflowen i `.github/workflows/build-macos.yml` bygger 
 ### Lokalt på Mac
 ```bash
 cmake -B build -G Xcode
-cmake --build build --config Release --target FjordDynEQ_VST3 FjordDynEQ_AU
+cmake --build build --config Release --target FongenDynEQ_VST3 FongenDynEQ_AU
 ```
-Kopier `Fjord DynEQ.vst3` til `~/Library/Audio/Plug-Ins/VST3/` og `Fjord DynEQ.component` til `~/Library/Audio/Plug-Ins/Components/`.
+Kopier `Fongen DynEQ.vst3` til `~/Library/Audio/Plug-Ins/VST3/` og `Fongen DynEQ.component` til `~/Library/Audio/Plug-Ins/Components/`.
 
 ## Tester
-`cmake -B build -DFJORD_BUILD_TESTS=ON`, deretter:
+`cmake -B build -DFONGEN_BUILD_TESTS=ON`, deretter:
 - `DspTest`: filterkurver, dynamikk, reaksjonstid, resonansdemper og CPU.
 - `HostTest <plugin.vst3> <bilde.png>`: laster selve VST3-fila, tester 44,1/48/96 kHz og blokker på 32–1024 samples, tilfeldig automasjon, state, bypass og latens.
 - `GuiSnapshot <bilde.png>`: tegner GUI-et med testsignal.
@@ -74,6 +76,7 @@ Kopier `Fjord DynEQ.vst3` til `~/Library/Audio/Plug-Ins/VST3/` og `Fjord DynEQ.c
 | `Source/DynEqDsp.h` | DSP-kjernen (SVF, dynamiske bånd, resonansdemper, analytiske kurver). Ingen JUCE-avhengighet. |
 | `Source/PluginProcessor.*` | Parametere (APVTS), lydprosessering, ringbuffer til analysatoren. |
 | `Source/PluginEditor.*` | Spekter, RTA, noder og kontrollpaneler. |
+| `assets/` | Logo som SVG og PNG (256, 512, 1024). Brukes i plugin-vinduet og som ikon for standalone-versjonen. |
 
 ## Lisens
 JUCE er lisensiert under AGPLv3 eller kommersiell lisens. For privat bruk er det uproblematisk. Skal pluginen deles eller selges som lukket kode, kan det kreves en kommersiell JUCE-lisens.

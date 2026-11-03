@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "BinaryData.h"
 
 using namespace juce;
 
@@ -9,7 +10,7 @@ static Font uiFont (float size, bool bold = false)
 }
 
 //==============================================================================
-FjordLookAndFeel::FjordLookAndFeel()
+FongenLookAndFeel::FongenLookAndFeel()
 {
     setColour (ResizableWindow::backgroundColourId, ui::bg);
     setColour (Slider::textBoxTextColourId, ui::text);
@@ -31,7 +32,7 @@ FjordLookAndFeel::FjordLookAndFeel()
     setColour (TextButton::textColourOnId, ui::bg);
 }
 
-Label* FjordLookAndFeel::createSliderTextBox (Slider& s)
+Label* FongenLookAndFeel::createSliderTextBox (Slider& s)
 {
     auto* l = LookAndFeel_V4::createSliderTextBox (s);
     l->setFont (uiFont (12.0f));
@@ -41,7 +42,7 @@ Label* FjordLookAndFeel::createSliderTextBox (Slider& s)
     return l;
 }
 
-void FjordLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos, float start, float end, Slider& s)
+void FongenLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos, float start, float end, Slider& s)
 {
     const auto bounds = Rectangle<float> ((float) x, (float) y, (float) w, (float) h).reduced (4);
     const float r = jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
@@ -70,7 +71,7 @@ void FjordLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int w, int h
 }
 
 //==============================================================================
-SpectrumDisplay::SpectrumDisplay (FjordAudioProcessor& p) : proc (p)
+SpectrumDisplay::SpectrumDisplay (FongenAudioProcessor& p) : proc (p)
 {
     window.resize (kSize);
     for (int i = 0; i < kSize; ++i) window[(size_t) i] = 0.5f - 0.5f * std::cos (2.0f * MathConstants<float>::pi * (float) i / (float) kSize);
@@ -203,15 +204,15 @@ void SpectrumDisplay::timerCallback()
 //==============================================================================
 Point<float> SpectrumDisplay::nodePos (int b) const
 {
-    const auto type = (fjord::BandType) (int) value (b, ids::type);
-    const bool hasGain = type == fjord::BandType::Bell || type == fjord::BandType::LowShelf || type == fjord::BandType::HighShelf;
+    const auto type = (fongen::BandType) (int) value (b, ids::type);
+    const bool hasGain = type == fongen::BandType::Bell || type == fongen::BandType::LowShelf || type == fongen::BandType::HighShelf;
     return { freqToX (value (b, ids::freq)), eqDbToY (hasGain ? value (b, ids::gain) : 0.0f) };
 }
 
 int SpectrumDisplay::hitNode (Point<float> p) const
 {
     int best = -1; float bestD = 12.0f;
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
     {
         if (value (b, ids::on) < 0.5f) continue;
         const float d = nodePos (b).getDistanceFrom (p);
@@ -288,8 +289,8 @@ void SpectrumDisplay::paint (Graphics& g)
     // Resonansdemper: summert kutt (oransje), hengende ned fra 0 dB-linjen
     if (proc.apvts.getRawParameterValue (ids::resOn)->load() > 0.5f)
     {
-        float red[fjord::kNumResBands]; float maxRed = 0;
-        for (int b = 0; b < fjord::kNumResBands; ++b) { red[b] = proc.resReductionDb[(size_t) b].load(); maxRed = jmax (maxRed, red[b]); }
+        float red[fongen::kNumResBands]; float maxRed = 0;
+        for (int b = 0; b < fongen::kNumResBands; ++b) { red[b] = proc.resReductionDb[(size_t) b].load(); maxRed = jmax (maxRed, red[b]); }
         if (maxRed > 0.05f)
         {
             Path p; p.startNewSubPath (r.getX(), eqDbToY (0));
@@ -297,8 +298,8 @@ void SpectrumDisplay::paint (Graphics& g)
             for (size_t i = 0; i < xFreqs.size(); i += 2)
             {
                 float sum = 0;
-                for (int b = 0; b < fjord::kNumResBands; ++b)
-                    if (red[b] > 0.05f) sum += fjord::magnitudeDb (fjord::BandType::Bell, proc.getResCentreHz (b), -red[b], q, xFreqs[i], fs);
+                for (int b = 0; b < fongen::kNumResBands; ++b)
+                    if (red[b] > 0.05f) sum += fongen::magnitudeDb (fongen::BandType::Bell, proc.getResCentreHz (b), -red[b], q, xFreqs[i], fs);
                 p.lineTo (freqToX (xFreqs[i]), eqDbToY (sum));
             }
             p.lineTo (r.getRight(), eqDbToY (0)); p.closeSubPath();
@@ -308,12 +309,12 @@ void SpectrumDisplay::paint (Graphics& g)
     }
 
     // EQ-kurver
-    struct B { bool on; fjord::BandType type; float f, gStatic, gNow, q; };
-    B bands[fjord::kNumBands];
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    struct B { bool on; fongen::BandType type; float f, gStatic, gNow, q; };
+    B bands[fongen::kNumBands];
+    for (int b = 0; b < fongen::kNumBands; ++b)
     {
         auto& x = bands[b];
-        x.on = value (b, ids::on) > 0.5f; x.type = (fjord::BandType) (int) value (b, ids::type);
+        x.on = value (b, ids::on) > 0.5f; x.type = (fongen::BandType) (int) value (b, ids::type);
         x.f = value (b, ids::freq); x.gStatic = value (b, ids::gain); x.q = value (b, ids::q);
         const bool dyn = std::abs (value (b, ids::range)) > 0.01f;
         x.gNow = dyn ? proc.bandGainDb[(size_t) b].load() : x.gStatic;
@@ -324,7 +325,7 @@ void SpectrumDisplay::paint (Graphics& g)
         for (size_t i = 0; i < xFreqs.size(); ++i)
         {
             const auto& x = bands[b];
-            const float db = fjord::magnitudeDb (x.type, x.f, useNow ? x.gNow : x.gStatic, x.q, xFreqs[i], fs);
+            const float db = fongen::magnitudeDb (x.type, x.f, useNow ? x.gNow : x.gStatic, x.q, xFreqs[i], fs);
             const float y = jlimit (r.getY() - 4, r.getBottom() + 4, eqDbToY (db));
             if (i == 0) p.startNewSubPath (freqToX (xFreqs[i]), y); else p.lineTo (freqToX (xFreqs[i]), y);
         }
@@ -337,7 +338,7 @@ void SpectrumDisplay::paint (Graphics& g)
         p.lineTo (r.getRight(), eqDbToY (0)); p.lineTo (r.getX(), eqDbToY (0)); p.closeSubPath();
         g.setColour (ui::band (selected).withAlpha (0.18f)); g.fillPath (p);
     }
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
         if (bands[b].on)
         {
             g.setColour (ui::band (b).withAlpha (b == selected ? 0.9f : 0.45f));
@@ -351,8 +352,8 @@ void SpectrumDisplay::paint (Graphics& g)
         for (size_t i = 0; i < xFreqs.size(); ++i)
         {
             float sum = 0;
-            for (int b = 0; b < fjord::kNumBands; ++b)
-                if (bands[b].on) sum += fjord::magnitudeDb (bands[b].type, bands[b].f, useNow ? bands[b].gNow : bands[b].gStatic, bands[b].q, xFreqs[i], fs);
+            for (int b = 0; b < fongen::kNumBands; ++b)
+                if (bands[b].on) sum += fongen::magnitudeDb (bands[b].type, bands[b].f, useNow ? bands[b].gNow : bands[b].gStatic, bands[b].q, xFreqs[i], fs);
             const float y = jlimit (r.getY() - 4, r.getBottom() + 4, eqDbToY (sum));
             if (i == 0) p.startNewSubPath (freqToX (xFreqs[i]), y); else p.lineTo (freqToX (xFreqs[i]), y);
         }
@@ -367,11 +368,11 @@ void SpectrumDisplay::paint (Graphics& g)
     }
 
     // Noder
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
     {
         if (! bands[b].on) continue;
         const auto c = nodePos (b);
-        const bool hasGain = bands[b].type == fjord::BandType::Bell || bands[b].type == fjord::BandType::LowShelf || bands[b].type == fjord::BandType::HighShelf;
+        const bool hasGain = bands[b].type == fongen::BandType::Bell || bands[b].type == fongen::BandType::LowShelf || bands[b].type == fongen::BandType::HighShelf;
         if (hasGain && std::abs (bands[b].gNow - bands[b].gStatic) > 0.05f)
         {
             // Dynamisk utslag: linje fra statisk til faktisk gain
@@ -426,8 +427,8 @@ void SpectrumDisplay::mouseDrag (const MouseEvent& e)
 {
     if (dragging < 0) return;
     setParamValue (param (dragging, ids::freq), xToFreq (e.position.x));
-    const auto type = (fjord::BandType) (int) value (dragging, ids::type);
-    if (type == fjord::BandType::Bell || type == fjord::BandType::LowShelf || type == fjord::BandType::HighShelf)
+    const auto type = (fongen::BandType) (int) value (dragging, ids::type);
+    if (type == fongen::BandType::Bell || type == fongen::BandType::LowShelf || type == fongen::BandType::HighShelf)
         setParamValue (param (dragging, ids::gain), jlimit (-24.0f, 24.0f, yToEqDb (e.position.y)));
 }
 
@@ -450,13 +451,13 @@ void SpectrumDisplay::mouseDoubleClick (const MouseEvent& e)
         on->beginChangeGesture(); setParamValue (on, 0.0f); on->endChangeGesture();
         return;
     }
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
     {
         if (value (b, ids::on) > 0.5f) continue;
         const float f = xToFreq (e.position.x);
         auto* type = param (b, ids::type);
         // Nær kantene foreslås hyller, ellers bell
-        const int t = f < 60 ? (int) fjord::BandType::LowShelf : (f > 12000 ? (int) fjord::BandType::HighShelf : (int) fjord::BandType::Bell);
+        const int t = f < 60 ? (int) fongen::BandType::LowShelf : (f > 12000 ? (int) fongen::BandType::HighShelf : (int) fongen::BandType::Bell);
         for (auto* p : { type, param (b, ids::freq), param (b, ids::gain), param (b, ids::on) }) p->beginChangeGesture();
         setParamValue (type, (float) t);
         setParamValue (param (b, ids::freq), f);
@@ -481,14 +482,14 @@ void SpectrumDisplay::mouseWheelMove (const MouseEvent& e, const MouseWheelDetai
 }
 
 //==============================================================================
-FjordAudioProcessorEditor::FjordAudioProcessorEditor (FjordAudioProcessor& p)
+FongenAudioProcessorEditor::FongenAudioProcessorEditor (FongenAudioProcessor& p)
     : AudioProcessorEditor (&p), proc (p), display (p)
 {
     setLookAndFeel (&lnf);
     addAndMakeVisible (display);
     display.onBandSelected = [this] (int b) { selectBand (b); };
 
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
     {
         auto& btn = bandButtons[b];
         btn.setButtonText (String (b + 1));
@@ -525,7 +526,7 @@ FjordAudioProcessorEditor::FjordAudioProcessorEditor (FjordAudioProcessor& p)
 
     // Velg første aktive bånd
     int first = 0;
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
         if (proc.apvts.getRawParameterValue (ids::band (b, ids::on))->load() > 0.5f) { first = b; break; }
     selectBand (first);
 
@@ -535,13 +536,13 @@ FjordAudioProcessorEditor::FjordAudioProcessorEditor (FjordAudioProcessor& p)
     startTimerHz (10);
 }
 
-FjordAudioProcessorEditor::~FjordAudioProcessorEditor()
+FongenAudioProcessorEditor::~FongenAudioProcessorEditor()
 {
     stopTimer();
     setLookAndFeel (nullptr);
 }
 
-void FjordAudioProcessorEditor::setupKnob (Knob& k, const String& name)
+void FongenAudioProcessorEditor::setupKnob (Knob& k, const String& name)
 {
     k.slider.setTextBoxStyle (Slider::TextBoxBelow, false, 80, 16);
     k.slider.setPopupDisplayEnabled (false, false, nullptr);
@@ -553,7 +554,7 @@ void FjordAudioProcessorEditor::setupKnob (Knob& k, const String& name)
     addAndMakeVisible (k.label);
 }
 
-void FjordAudioProcessorEditor::selectBand (int b)
+void FongenAudioProcessorEditor::selectBand (int b)
 {
     selected = b;
     bandButtons[b].setToggleState (true, dontSendNotification);
@@ -578,25 +579,27 @@ void FjordAudioProcessorEditor::selectBand (int b)
     repaint();
 }
 
-void FjordAudioProcessorEditor::timerCallback()
+void FongenAudioProcessorEditor::timerCallback()
 {
     // Dim knappene til bånd som er av, og grå ut kontroller som ikke gjelder båndtypen
-    for (int b = 0; b < fjord::kNumBands; ++b)
+    for (int b = 0; b < fongen::kNumBands; ++b)
         bandButtons[b].setAlpha (proc.apvts.getRawParameterValue (ids::band (b, ids::on))->load() > 0.5f ? 1.0f : 0.45f);
-    const auto type = (fjord::BandType) (int) proc.apvts.getRawParameterValue (ids::band (selected, ids::type))->load();
-    const bool hasGain = type == fjord::BandType::Bell || type == fjord::BandType::LowShelf || type == fjord::BandType::HighShelf;
+    const auto type = (fongen::BandType) (int) proc.apvts.getRawParameterValue (ids::band (selected, ids::type))->load();
+    const bool hasGain = type == fongen::BandType::Bell || type == fongen::BandType::LowShelf || type == fongen::BandType::HighShelf;
     for (auto* k : { &kGain, &kRange, &kThresh, &kAttack, &kRelease }) { k->slider.setEnabled (hasGain); k->label.setAlpha (hasGain ? 1.0f : 0.4f); }
 }
 
-void FjordAudioProcessorEditor::paint (Graphics& g)
+void FongenAudioProcessorEditor::paint (Graphics& g)
 {
     g.fillAll (ui::bg);
     auto top = getLocalBounds().removeFromTop (34);
     g.setColour (ui::text);
     g.setFont (uiFont (16.0f, true));
-    g.drawText ("FJORD", top.withTrimmedLeft (16), Justification::centredLeft);
+    static const Image logo = ImageCache::getFromMemory (BinaryData::fongenlogo256_png, BinaryData::fongenlogo256_pngSize);
+    g.drawImage (logo, Rectangle<float> (12, 4, 26, 26), RectanglePlacement::centred);
+    g.drawText ("FONGEN", top.withTrimmedLeft (46), Justification::centredLeft);
     g.setColour (ui::post);
-    g.drawText ("DynEQ", top.withTrimmedLeft (78), Justification::centredLeft);
+    g.drawText ("DynEQ", top.withTrimmedLeft (114), Justification::centredLeft);
     g.setColour (ui::dim);
     g.setFont (uiFont (11.0f));
     g.drawText (String (CharPointer_UTF8 ("Dynamisk EQ  \xc2\xb7  Resonansdemper  \xc2\xb7  Sanntids-RTA  \xc2\xb7  0 samples latens")), top.withTrimmedRight (16), Justification::centredRight);
@@ -611,7 +614,7 @@ void FjordAudioProcessorEditor::paint (Graphics& g)
     g.drawText ("BAND", bandPanel.reduced (12, 8).removeFromTop (14), Justification::centredLeft);
 }
 
-void FjordAudioProcessorEditor::layoutKnobs (Rectangle<int> area, Knob* const* knobs, int n)
+void FongenAudioProcessorEditor::layoutKnobs (Rectangle<int> area, Knob* const* knobs, int n)
 {
     const int w = area.getWidth() / n;
     for (int i = 0; i < n; ++i)
@@ -622,7 +625,7 @@ void FjordAudioProcessorEditor::layoutKnobs (Rectangle<int> area, Knob* const* k
     }
 }
 
-void FjordAudioProcessorEditor::resized()
+void FongenAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds();
     area.removeFromTop (34);

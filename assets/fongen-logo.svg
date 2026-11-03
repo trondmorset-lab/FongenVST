@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B2C44"/><stop offset="1" stop-color="#0B1524"/></linearGradient>
+<radialGradient id="fadeW" cx="512" cy="512" r="360" gradientUnits="userSpaceOnUse"><stop offset="0.25" stop-color="#EAF2F8" stop-opacity=".75"/><stop offset="1" stop-color="#EAF2F8" stop-opacity=".08"/></radialGradient>
+<radialGradient id="fadeT" cx="512" cy="512" r="360" gradientUnits="userSpaceOnUse"><stop offset="0.25" stop-color="#4FB7C9" stop-opacity=".9"/><stop offset="1" stop-color="#4FB7C9" stop-opacity=".08"/></radialGradient>
+<filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<linearGradient id="curve" x1="364" y1="430" x2="668" y2="590" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#B8F1F7"/><stop offset="1" stop-color="#3AA9BE"/></linearGradient></defs>
+<rect x="32" y="32" width="960" height="960" rx="220" fill="url(#bg)"/>
+<g filter="url(#soft)"><path d="M512.0 442.0 L587.0 302.0 L512.0 162.0 L437.0 302.0 Z" fill="url(#fadeW)"/><path d="M561.5 462.5 L713.5 416.5 L759.5 264.5 L607.5 310.5 Z" fill="url(#fadeT)"/><path d="M582.0 512.0 L722.0 587.0 L862.0 512.0 L722.0 437.0 Z" fill="url(#fadeW)"/><path d="M561.5 561.5 L607.5 713.5 L759.5 759.5 L713.5 607.5 Z" fill="url(#fadeT)"/><path d="M512.0 582.0 L437.0 722.0 L512.0 862.0 L587.0 722.0 Z" fill="url(#fadeW)"/><path d="M462.5 561.5 L310.5 607.5 L264.5 759.5 L416.5 713.5 Z" fill="url(#fadeT)"/><path d="M442.0 512.0 L302.0 437.0 L162.0 512.0 L302.0 587.0 Z" fill="url(#fadeW)"/><path d="M462.5 462.5 L416.5 310.5 L264.5 264.5 L310.5 416.5 Z" fill="url(#fadeT)"/></g>
+<circle cx="512" cy="512" r="175" fill="#13223A"/>
+<g fill="none" stroke="url(#curve)" stroke-width="21" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
+<path d="M372 552 L410 552 C450 552 474 436 512 436 C550 436 570 552 602 552 C618 552 626 588 640 588 C652 588 656 552 666 552"/>
+</g>
+<circle cx="512" cy="436" r="17" fill="#EAF2F8" filter="url(#glow)"/>
+</svg>

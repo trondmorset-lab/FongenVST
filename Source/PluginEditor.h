@@ -21,10 +21,10 @@ namespace ui
     }
 }
 
-class FjordLookAndFeel : public juce::LookAndFeel_V4
+class FongenLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
-    FjordLookAndFeel();
+    FongenLookAndFeel();
     void drawRotarySlider (juce::Graphics&, int x, int y, int w, int h, float pos, float start, float end, juce::Slider&) override;
     juce::Label* createSliderTextBox (juce::Slider&) override;
 };
@@ -34,7 +34,7 @@ public:
 class SpectrumDisplay : public juce::Component, private juce::Timer
 {
 public:
-    explicit SpectrumDisplay (FjordAudioProcessor&);
+    explicit SpectrumDisplay (FongenAudioProcessor&);
     ~SpectrumDisplay() override;
 
     void paint (juce::Graphics&) override;
@@ -69,7 +69,7 @@ private:
     int hitNode (juce::Point<float>) const;
     juce::Point<float> nodePos (int band) const;
 
-    FjordAudioProcessor& proc;
+    FongenAudioProcessor& proc;
     static constexpr int kOrder = 12, kSize = 1 << kOrder;
     juce::dsp::FFT fft { kOrder };
     std::vector<float> window, fftBuf, preRing, postRing, scratch, preDb, postDb, binDbTmp;
@@ -83,11 +83,11 @@ private:
 };
 
 //==============================================================================
-class FjordAudioProcessorEditor : public juce::AudioProcessorEditor, private juce::Timer
+class FongenAudioProcessorEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
-    explicit FjordAudioProcessorEditor (FjordAudioProcessor&);
-    ~FjordAudioProcessorEditor() override;
+    explicit FongenAudioProcessorEditor (FongenAudioProcessor&);
+    ~FongenAudioProcessorEditor() override;
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -108,11 +108,11 @@ private:
     void setupKnob (Knob&, const juce::String& name);
     void layoutKnobs (juce::Rectangle<int> area, Knob* const* knobs, int n);
 
-    FjordAudioProcessor& proc;
-    FjordLookAndFeel lnf;
+    FongenAudioProcessor& proc;
+    FongenLookAndFeel lnf;
     SpectrumDisplay display;
 
-    juce::TextButton bandButtons[fjord::kNumBands];
+    juce::TextButton bandButtons[fongen::kNumBands];
     juce::ToggleButton bandOn { "On" };
     juce::ComboBox bandType;
     Knob kFreq, kGain, kQ, kRange, kThresh, kAttack, kRelease;
@@ -125,5 +125,5 @@ private:
 
     int selected = 0;
     juce::Rectangle<int> bandPanel, resPanel;
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FjordAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FongenAudioProcessorEditor)
 };

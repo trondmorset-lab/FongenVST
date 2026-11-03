@@ -8,7 +8,7 @@ int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
     std::unique_ptr<juce::AudioProcessor> proc (createPluginFilter());
-    auto* p = dynamic_cast<FjordAudioProcessor*> (proc.get());
+    auto* p = dynamic_cast<FongenAudioProcessor*> (proc.get());
 
     auto set = [&] (const juce::String& id, float v)
     {
