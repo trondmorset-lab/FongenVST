@@ -3,12 +3,11 @@ name: Build macOS (VST3 + AU)
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write   # trengs for å lage release ved tag
+  contents: write   # trengs for å lage release
 
 jobs:
   build:
@@ -20,7 +19,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/_deps
-          key: juce-9.0.5-${{ runner.os }}
+          key: fongen-juce-9.0.5-${{ runner.os }}
 
       - name: Configure
         run: cmake -B build -G Xcode -DFONGEN_BUILD_TESTS=ON
@@ -81,11 +80,17 @@ jobs:
             FongenDynEQ-macOS.zip
             FongenDynEQ-macOS.pkg
 
-      - name: Release (kun ved tag)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Ny release lages automatisk når versjonen i CMakeLists.txt ikke har en release fra før
+      - name: Release (ny versjon på main)
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" FongenDynEQ-macOS.pkg FongenDynEQ-macOS.zip \
-            --title "Fongen DynEQ ${{ github.ref_name }}" \
-            --notes "VST3 og AU for macOS (Apple Silicon + Intel). Dobbeltklikk .pkg for å installere, eller bruk zip-fila og kopier pluginene manuelt."
+          TAG="v$(sed -n 's/^project(FongenDynEQ VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG finnes allerede – øk VERSION i CMakeLists.txt for en ny release."
+          else
+            gh release create "$TAG" FongenDynEQ-macOS.pkg FongenDynEQ-macOS.zip --target "$GITHUB_SHA" \
+              --title "Fongen DynEQ $TAG" \
+              --notes "VST3 og AU for macOS (Apple Silicon + Intel). Dobbeltklikk .pkg for å installere, eller bruk zip-fila og kopier pluginene manuelt."
+          fi

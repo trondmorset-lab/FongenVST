@@ -55,7 +55,7 @@ Detektoren lytter på samme frekvensområde som båndet: båndpass for bell, lav
 ## Bygging
 
 ### Via GitHub (anbefalt)
-Push repoet til GitHub. Workflowen i `.github/workflows/build-macos.yml` bygger VST3 og AU som universal binary (Apple Silicon og Intel), kjører DSP-testene og pluginval, og lager en `.pkg`-installer. Last den ned under **Actions → siste kjøring → Artifacts**. En tag som `v1.0.0` lager i tillegg en release.
+Push repoet til GitHub. Workflowen i `.github/workflows/build-macos.yml` bygger VST3 og AU som universal binary (Apple Silicon og Intel), kjører DSP-testene og pluginval, og lager en `.pkg`-installer. Ferdige versjoner ligger under **Releases** på GitHub. En ny release lages automatisk når `VERSION` i `CMakeLists.txt` økes og pushes til `main`. Bygg mellom releasene finnes under **Actions → siste kjøring → Artifacts**.
 
 ### Lokalt på Mac
 ```bash
