@@ -45,10 +45,59 @@ Label* FongenLookAndFeel::createSliderTextBox (Slider& s)
 void FongenLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos, float start, float end, Slider& s)
 {
     const auto bounds = Rectangle<float> ((float) x, (float) y, (float) w, (float) h).reduced (4);
-    const float r = jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
+    const float outer = jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
     const auto c = bounds.getCentre();
     const float angle = start + pos * (end - start);
     const auto fill = s.findColour (Slider::rotarySliderFillColourId);
+
+    // VU-ring: settes av editoren som egenskaper på slideren (nivå i samme enhet som slideren)
+    const auto& props = s.getProperties();
+    const bool hasVu = props.contains ("vuDb");
+    const float r = hasVu ? outer - 7.0f : outer;
+
+    if (hasVu)
+    {
+        const float ringR = outer - 2.0f;
+        auto toAngle = [&] (double v) { return start + (float) s.valueToProportionOfLength (jlimit (s.getMinimum(), s.getMaximum(), v)) * (end - start); };
+        const float level = (float) props["vuDb"], peak = (float) props.getWithDefault ("vuPeakDb", -120.0f);
+        const bool active = (bool) props.getWithDefault ("vuActive", true);
+        const bool under  = (bool) props.getWithDefault ("vuUnder", false);
+        const float thrA = angle;
+
+        Path bgRing; bgRing.addCentredArc (c.x, c.y, ringR, ringR, 0, start, end, true);
+        g.setColour (ui::grid);
+        g.strokePath (bgRing, PathStrokeType (3.5f, PathStrokeType::curved, PathStrokeType::butt));
+
+        if (level > s.getMinimum())
+        {
+            const float lvlA = toAngle (level);
+            // Nivået vises dempet. Delen mellom nivå og terskel lyser i båndets farge
+            // når båndet reagerer: over terskel i Over-modus, under terskel i Under-modus.
+            Path lvlArc; lvlArc.addCentredArc (c.x, c.y, ringR, ringR, 0, start, under ? lvlA : jmin (lvlA, thrA), true);
+            g.setColour (ui::text.withAlpha (s.isEnabled() ? 0.45f : 0.2f));
+            g.strokePath (lvlArc, PathStrokeType (3.5f, PathStrokeType::curved, PathStrokeType::butt));
+            const bool hitting = under ? lvlA < thrA : lvlA > thrA;
+            if (hitting)
+            {
+                Path hotArc; hotArc.addCentredArc (c.x, c.y, ringR, ringR, 0, jmin (lvlA, thrA), jmax (lvlA, thrA), true);
+                const auto hot = active ? fill : ui::text;
+                g.setColour (hot.withAlpha (0.35f));
+                g.strokePath (hotArc, PathStrokeType (7.0f, PathStrokeType::curved, PathStrokeType::butt));
+                g.setColour (hot);
+                g.strokePath (hotArc, PathStrokeType (3.5f, PathStrokeType::curved, PathStrokeType::butt));
+            }
+        }
+        if (peak > s.getMinimum())
+        {
+            // Topphold: liten strek på ringen
+            const float pa = toAngle (peak);
+            g.setColour (! under && peak > s.getValue() && active ? fill : ui::text.withAlpha (0.7f));
+            g.drawLine ({ c.getPointOnCircumference (ringR - 3.0f, pa), c.getPointOnCircumference (ringR + 3.0f, pa) }, 2.0f);
+        }
+        // Terskelmerke på ringen
+        g.setColour (ui::curve);
+        g.drawLine ({ c.getPointOnCircumference (ringR - 4.0f, thrA), c.getPointOnCircumference (ringR + 4.0f, thrA) }, 1.5f);
+    }
 
     g.setColour (ui::bg);
     g.fillEllipse (c.x - r, c.y - r, r * 2, r * 2);
@@ -503,6 +552,10 @@ FongenAudioProcessorEditor::FongenAudioProcessorEditor (FongenAudioProcessor& p)
     addAndMakeVisible (bandOn);
     bandType.addItemList ({ "Bell", "Low Shelf", "High Shelf", "Low Cut", "High Cut", "Notch" }, 1);
     addAndMakeVisible (bandType);
+    bandMode.setClickingTogglesState (true);
+    bandMode.setTooltip ("Over: båndet reagerer når nivået går over terskelen. Under: når nivået er under terskelen.");
+    bandMode.onStateChange = [this] { bandMode.setButtonText (bandMode.getToggleState() ? "UNDER" : "OVER"); };
+    addAndMakeVisible (bandMode);
 
     setupKnob (kFreq, "FREQ"); setupKnob (kGain, "GAIN"); setupKnob (kQ, "Q");
     setupKnob (kRange, "DYN RANGE"); setupKnob (kThresh, "THRESHOLD"); setupKnob (kAttack, "ATTACK"); setupKnob (kRelease, "RELEASE");
@@ -533,7 +586,7 @@ FongenAudioProcessorEditor::FongenAudioProcessorEditor (FongenAudioProcessor& p)
     setResizable (true, true);
     setResizeLimits (900, 580, 1800, 1100);
     setSize (1060, 660);
-    startTimerHz (10);
+    startTimerHz (30);
 }
 
 FongenAudioProcessorEditor::~FongenAudioProcessorEditor()
@@ -557,14 +610,17 @@ void FongenAudioProcessorEditor::setupKnob (Knob& k, const String& name)
 void FongenAudioProcessorEditor::selectBand (int b)
 {
     selected = b;
+    vuDisp = vuPeak = -120.0f; vuPeakHold = 0;
     bandButtons[b].setToggleState (true, dontSendNotification);
     display.setSelectedBand (b);
 
     // Koble kontrollene om til det valgte båndets parametere
-    bandOnAtt.reset(); bandTypeAtt.reset();
+    bandOnAtt.reset(); bandTypeAtt.reset(); bandModeAtt.reset();
     for (auto* k : { &kFreq, &kGain, &kQ, &kRange, &kThresh, &kAttack, &kRelease }) k->att.reset();
     bandOnAtt   = std::make_unique<ButtonAttachment> (proc.apvts, ids::band (b, ids::on), bandOn);
     bandTypeAtt = std::make_unique<ComboAttachment>  (proc.apvts, ids::band (b, ids::type), bandType);
+    bandModeAtt = std::make_unique<ButtonAttachment> (proc.apvts, ids::band (b, ids::mode), bandMode);
+    bandMode.setButtonText (bandMode.getToggleState() ? "UNDER" : "OVER");
     kFreq.att    = std::make_unique<SliderAttachment> (proc.apvts, ids::band (b, ids::freq), kFreq.slider);
     kGain.att    = std::make_unique<SliderAttachment> (proc.apvts, ids::band (b, ids::gain), kGain.slider);
     kQ.att       = std::make_unique<SliderAttachment> (proc.apvts, ids::band (b, ids::q), kQ.slider);
@@ -575,6 +631,10 @@ void FongenAudioProcessorEditor::selectBand (int b)
     for (auto* k : { &kFreq, &kGain, &kQ, &kRange, &kThresh, &kAttack, &kRelease })
         k->slider.setColour (Slider::rotarySliderFillColourId, ui::band (b));
     bandOn.setColour (ToggleButton::tickColourId, ui::band (b));
+    bandMode.setColour (TextButton::buttonColourId, ui::bg);
+    bandMode.setColour (TextButton::buttonOnColourId, ui::bg);
+    bandMode.setColour (TextButton::textColourOffId, ui::band (b));
+    bandMode.setColour (TextButton::textColourOnId, ui::band (b));
     timerCallback();
     repaint();
 }
@@ -587,6 +647,28 @@ void FongenAudioProcessorEditor::timerCallback()
     const auto type = (fongen::BandType) (int) proc.apvts.getRawParameterValue (ids::band (selected, ids::type))->load();
     const bool hasGain = type == fongen::BandType::Bell || type == fongen::BandType::LowShelf || type == fongen::BandType::HighShelf;
     for (auto* k : { &kGain, &kRange, &kThresh, &kAttack, &kRelease }) { k->slider.setEnabled (hasGain); k->label.setAlpha (hasGain ? 1.0f : 0.4f); }
+    bandMode.setEnabled (hasGain);
+    bandMode.setAlpha (hasGain ? 1.0f : 0.4f);
+
+    // VU-ring rundt Threshold: rask stigning, fall ca. 20 dB/s, topphold i 1,5 s
+    const bool bandIsOn = proc.apvts.getRawParameterValue (ids::band (selected, ids::on))->load() > 0.5f;
+    const float level = proc.bandLevelDb[(size_t) selected].exchange (-120.0f, std::memory_order_relaxed);
+    const float lvl = (bandIsOn && hasGain) ? level : -120.0f;
+    vuDisp = lvl > vuDisp ? lvl : jmax (lvl, vuDisp - 0.7f);
+    if (vuDisp >= vuPeak) { vuPeak = vuDisp; vuPeakHold = 45; }
+    else if (--vuPeakHold < 0) vuPeak = jmax (vuDisp, vuPeak - 0.7f);
+
+    auto& props = kThresh.slider.getProperties();
+    const bool rangeOn = std::abs (proc.apvts.getRawParameterValue (ids::band (selected, ids::range))->load()) > 0.01f;
+    props.set ("vuDb", vuDisp);
+    props.set ("vuPeakDb", vuPeak);
+    const bool under = bandMode.getToggleState();
+    props.set ("vuActive", rangeOn);
+    props.set ("vuUnder", under);
+    const float thr = (float) kThresh.slider.getValue();
+    const bool hit = rangeOn && (under ? vuDisp < thr : vuDisp > thr);
+    kThresh.label.setColour (Label::textColourId, hit ? ui::band (selected) : ui::dim);
+    kThresh.slider.repaint();
 }
 
 void FongenAudioProcessorEditor::paint (Graphics& g)
@@ -642,6 +724,8 @@ void FongenAudioProcessorEditor::resized()
     row.removeFromLeft (12);
     bandOn.setBounds (row.removeFromLeft (56));
     bandType.setBounds (row.removeFromLeft (120).reduced (0, 2));
+    row.removeFromLeft (8);
+    bandMode.setBounds (row.removeFromLeft (70).reduced (0, 2));
     bp.removeFromTop (8);
     Knob* bandKnobs[] = { &kFreq, &kGain, &kQ, &kRange, &kThresh, &kAttack, &kRelease };
     layoutKnobs (bp, bandKnobs, 7);

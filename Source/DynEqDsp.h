@@ -113,6 +113,7 @@ struct BandParams
     float freq = 1000, gainDb = 0, q = 1;
     float rangeDb = 0;          // dynamisk område: negativ = kutt når signalet går over terskel, positiv = løft
     float thresholdDb = -24;
+    bool  under = false;        // false = reager når signalet går over terskel, true = når det er under
     float attackMs = 1, releaseMs = 80;
 };
 
@@ -200,15 +201,20 @@ public:
         smoothedStatic = p.gainDb + staticCoef * (smoothedStatic - p.gainDb);
         float gainDb = smoothedStatic;
 
-        if (isDynamic())
+        // Detektoren kjører alltid for bell og hyller, slik at nivået kan vises mot terskelen
+        // også før Dyn Range er skrudd opp. Gainen endres bare når båndet er dynamisk.
         {
             float peak = 0;
             for (int c = 0; c < numCh; ++c) peak = std::max (peak, std::abs (det[c].process (x[c], detC)));
             env = peak > env ? peak + attCoef * (env - peak) : peak + relCoef * (env - peak);
-            const float over = fastDb (env) - p.thresholdDb;
+        }
+        if (isDynamic())
+        {
+            const float lvl = fastDb (env);
+            const float over = p.under ? p.thresholdDb - lvl : lvl - p.thresholdDb;
             if (over > 0)
             {
-                // Myk overgang: fullt område nås når signalet er max(6, |range|) dB over terskel
+                // Myk overgang: fullt område nås max(6, |range|) dB forbi terskelen (over eller under)
                 const float span = std::max (6.0f, std::abs (p.rangeDb));
                 const float t = std::min (1.0f, over / span);
                 gainDb += p.rangeDb * t * t * (3.0f - 2.0f * t);   // smoothstep
@@ -247,6 +253,8 @@ public:
     }
 
     float getCurrentGainDb() const noexcept { return currentGainDb; }
+    // Detektornivå i dBFS (samme verdi som sammenlignes med terskelen)
+    float getDetectorDb() const noexcept { return fastDb (env); }
     const BandParams& params() const noexcept { return p; }
 
 private:

@@ -9,7 +9,7 @@ namespace ids
     inline juce::String band (int b, const char* name) { return "b" + juce::String (b + 1) + "_" + name; }
     inline const char* on = "on";  inline const char* type = "type"; inline const char* freq = "freq";
     inline const char* gain = "gain"; inline const char* q = "q"; inline const char* range = "range";
-    inline const char* thresh = "thresh"; inline const char* attack = "attack"; inline const char* release = "release";
+    inline const char* thresh = "thresh"; inline const char* mode = "mode"; inline const char* attack = "attack"; inline const char* release = "release";
 
     inline const juce::String resOn = "res_on", resDepth = "res_depth", resSelect = "res_select",
                               resSharp = "res_sharp", resAttack = "res_attack", resRelease = "res_release",
@@ -78,13 +78,14 @@ public:
     // Til GUI
     AnalyserFifo preFifo, postFifo;
     std::array<std::atomic<float>, fongen::kNumBands> bandGainDb {};
+    std::array<std::atomic<float>, fongen::kNumBands> bandLevelDb {};   // detektornivå, vises rundt Threshold
     std::array<std::atomic<float>, fongen::kNumResBands> resReductionDb {};
     std::atomic<double> currentSampleRate { 48000.0 };
     float getResCentreHz (int b) const noexcept { return res.getCentreHz (b); }
     float getResCutQ() const noexcept { return res.getCutQ(); }
 
 private:
-    struct BandPtrs { std::atomic<float>* p[9]; };
+    struct BandPtrs { std::atomic<float>* p[10]; };
     std::array<BandPtrs, fongen::kNumBands> bandPtrs {};
     std::atomic<float>* resPtrs[8] {};
     std::atomic<float>* outputPtr = nullptr;

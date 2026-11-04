@@ -115,6 +115,8 @@ private:
     juce::TextButton bandButtons[fongen::kNumBands];
     juce::ToggleButton bandOn { "On" };
     juce::ComboBox bandType;
+    juce::TextButton bandMode { "OVER" };
+    std::unique_ptr<ButtonAttachment> bandModeAtt;
     Knob kFreq, kGain, kQ, kRange, kThresh, kAttack, kRelease;
     std::unique_ptr<ButtonAttachment> bandOnAtt;
     std::unique_ptr<ComboAttachment> bandTypeAtt;
@@ -124,6 +126,7 @@ private:
     std::unique_ptr<ButtonAttachment> resOnAtt;
 
     int selected = 0;
+    float vuDisp = -120.0f, vuPeak = -120.0f; int vuPeakHold = 0;
     juce::Rectangle<int> bandPanel, resPanel;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FongenAudioProcessorEditor)
 };

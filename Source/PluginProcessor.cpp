@@ -40,6 +40,7 @@ AudioProcessorValueTreeState::ParameterLayout FongenAudioProcessor::createLayout
                                                                AudioParameterFloatAttributes().withStringFromValueFunction (db)));
         grp->addChild (std::make_unique<AudioParameterFloat>  (pid (ids::thresh), pre + "Threshold", NormalisableRange<float> (-80, 0, 0.1f), -30,
                                                                AudioParameterFloatAttributes().withStringFromValueFunction (db)));
+        grp->addChild (std::make_unique<AudioParameterChoice> (pid (ids::mode), pre + "Mode", StringArray { "Over", "Under" }, 0));
         grp->addChild (std::make_unique<AudioParameterFloat>  (pid (ids::attack), pre + "Attack", logRange (0.1f, 200), 1,
                                                                AudioParameterFloatAttributes().withStringFromValueFunction (ms)));
         grp->addChild (std::make_unique<AudioParameterFloat>  (pid (ids::release), pre + "Release", logRange (5, 2000), 80,
@@ -75,9 +76,9 @@ FongenAudioProcessor::FongenAudioProcessor()
                                        .withOutput ("Output", AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "FongenDynEQ", createLayout())
 {
-    const char* names[9] = { ids::on, ids::type, ids::freq, ids::gain, ids::q, ids::range, ids::thresh, ids::attack, ids::release };
+    const char* names[10] = { ids::on, ids::type, ids::freq, ids::gain, ids::q, ids::range, ids::thresh, ids::attack, ids::release, ids::mode };
     for (int b = 0; b < fongen::kNumBands; ++b)
-        for (int i = 0; i < 9; ++i)
+        for (int i = 0; i < 10; ++i)
             bandPtrs[(size_t) b].p[i] = apvts.getRawParameterValue (ids::band (b, names[i]));
 
     const String resIds[8] = { ids::resOn, ids::resDepth, ids::resSelect, ids::resSharp, ids::resAttack, ids::resRelease, ids::resLow, ids::resHigh };
@@ -85,6 +86,7 @@ FongenAudioProcessor::FongenAudioProcessor()
     outputPtr = apvts.getRawParameterValue (ids::output);
 
     for (auto& g : bandGainDb) g.store (0);
+    for (auto& l : bandLevelDb) l.store (-120.0f);
     for (auto& r : resReductionDb) r.store (0);
 }
 
@@ -129,6 +131,7 @@ void FongenAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&
         bp.freq = pp[2]->load(); bp.gainDb = pp[3]->load(); bp.q = pp[4]->load();
         bp.rangeDb = pp[5]->load(); bp.thresholdDb = pp[6]->load();
         bp.attackMs = pp[7]->load(); bp.releaseMs = pp[8]->load();
+        bp.under = pp[9]->load() > 0.5f;
         bands[(size_t) b].setParams (bp);
     }
     {
@@ -171,7 +174,15 @@ void FongenAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&
 
     pushMono (postFifo);
 
-    for (int b = 0; b < fongen::kNumBands; ++b) bandGainDb[(size_t) b].store (bands[(size_t) b].getCurrentGainDb(), std::memory_order_relaxed);
+    for (int b = 0; b < fongen::kNumBands; ++b)
+    {
+        bandGainDb[(size_t) b].store (bands[(size_t) b].getCurrentGainDb(), std::memory_order_relaxed);
+        // Høyeste nivå siden GUI-et sist leste (GUI-et setter verdien tilbake til -120)
+        const float lvl = bands[(size_t) b].getDetectorDb();
+        auto& slot = bandLevelDb[(size_t) b];
+        float prev = slot.load (std::memory_order_relaxed);
+        while (lvl > prev && ! slot.compare_exchange_weak (prev, lvl, std::memory_order_relaxed)) {}
+    }
     for (int b = 0; b < fongen::kNumResBands; ++b) resReductionDb[(size_t) b].store (res.getReductionDb (b), std::memory_order_relaxed);
 }
 

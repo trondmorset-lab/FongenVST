@@ -34,8 +34,11 @@ Dynamisk EQ og resonansdemper i VST3-format (og AU på Mac), i samme ånd som Fa
 |---|---|
 | **Freq / Gain / Q** | Vanlig EQ. Gain gjelder bell og hyller. |
 | **Dyn Range** (-24 til +24 dB) | Hvor mye gainen endres når signalet i båndet går over terskel. Negativ = kutt (kompresjon), positiv = løft. 0 = statisk EQ. |
-| **Threshold** (-80 til 0 dBFS) | Nivået i båndet der dynamikken begynner. Fullt utslag nås ca. max(6, \|range\|) dB over terskel. |
+| **Over / Under** | Om båndet reagerer når nivået går **over** terskelen (kompresjon/de-essing, eller løft med positiv range) eller er **under** terskelen (ekspansjon, eller løft av svake partier). |
+| **Threshold** (-80 til 0 dBFS) | Nivået i båndet der dynamikken begynner. Fullt utslag nås ca. max(6, \|range\|) dB forbi terskelen. |
 | **Attack / Release** | Detektorens reaksjonstid (0,1–200 ms / 5–2000 ms). |
+
+**VU-ringen rundt Threshold** viser nivået detektoren faktisk måler i båndet, på samme skala som knappen. Hvit strek er terskelen, og den lille streken er topphold. Delen av ringen der båndet reagerer lyser i båndets farge, og THRESHOLD-teksten lyser når du treffer. Ringen virker også før Dyn Range er skrudd opp, så du kan stille terskelen først.
 
 Detektoren lytter på samme frekvensområde som båndet: båndpass for bell, lavpass for low shelf og høypass for high shelf. Venstre og høyre er linket.
 

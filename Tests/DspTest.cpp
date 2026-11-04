@@ -66,9 +66,33 @@ int main()
         check (std::abs (quiet) < 0.1, "Lavt signal (-50 dBFS) passerer uendret", quiet);
         check (off > -2.0, "Høyt signal utenfor båndet (200 Hz) påvirkes lite", off);
 
+        bp.under = true; bp.rangeDb = +6; bp.thresholdDb = -30;
+        const double upQuiet = sineGainDb (bp, 1000, -50);
+        const double upLoud  = sineGainDb (bp, 1000, -6);
+        check (upQuiet > 5.5 && upQuiet < 6.5, "Under-modus: lavt signal (-50 dBFS) løftes +6 dB", upQuiet);
+        check (std::abs (upLoud) < 0.1, "Under-modus: høyt signal (-6 dBFS) passerer uendret", upLoud);
+        bp.under = false;
+
         bp.rangeDb = +6; bp.thresholdDb = -40;
         const double up = sineGainDb (bp, 1000, -10);
         check (up > 5.5 && up < 6.5, "Positiv range løfter når signalet er over terskel", up);
+    }
+
+    std::printf ("\nDetektornivå (vises i VU-ringen rundt Threshold)\n");
+    {
+        for (float range : { 0.0f, -12.0f })
+        {
+            BandParams bp; bp.on = true; bp.freq = 1000; bp.q = 1; bp.rangeDb = range; bp.thresholdDb = -30;
+            DynamicBand band; band.prepare (fs); band.setParams (bp);
+            for (int i = 0; i < (int) fs / 2; ++i)
+            {
+                float x[2]; x[0] = x[1] = 0.5f * (float) std::sin (2 * kPi * 1000 * i / fs);   // -6 dBFS
+                band.processFrame (x, 2);
+            }
+            const double d = band.getDetectorDb();
+            check (std::abs (d + 6.02) < 0.5, range == 0 ? "Sinus -6 dBFS i båndet leses som ca. -6 dB (statisk bånd)"
+                                                          : "Sinus -6 dBFS i båndet leses som ca. -6 dB (dynamisk bånd)", d);
+        }
     }
 
     std::printf ("\nReaksjonstid (attack 0,5 ms): tid fra signalstart til 90 %% av kuttet\n");

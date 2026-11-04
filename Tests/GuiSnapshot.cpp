@@ -23,6 +23,7 @@ int main (int argc, char** argv)
     set ("b4_range", -9); set ("b4_thresh", -45); set ("b4_attack", 0.3f);
     set ("b6_on", 1); set ("b6_type", 2); set ("b6_freq", 11000); set ("b6_gain", 2.5f);
     set ("res_on", 1); set ("res_depth", 8);
+    if (argc > 3 && juce::String (argv[3]) == "under") { set ("b4_mode", 1); set ("b4_thresh", -20); set ("b4_range", 6); }
 
     const double fs = 48000; const int bs = 512;
     proc->setPlayConfigDetails (2, 2, fs, bs);
@@ -50,6 +51,11 @@ int main (int argc, char** argv)
     for (int i = 0; i < 60; ++i) feed();
 
     std::unique_ptr<juce::AudioProcessorEditor> ed (proc->createEditorIfNeeded());
+    // Velg bånd (standard 4, sibilansbåndet) så VU-ringen rundt Threshold vises
+    const juce::String bandToShow = argc > 2 ? argv[2] : "4";
+    for (auto* child : ed->getChildren())
+        if (auto* btn = dynamic_cast<juce::TextButton*> (child))
+            if (btn->getButtonText() == bandToShow) btn->triggerClick();
     for (int i = 0; i < 120; ++i) { feed(); feed(); juce::MessageManager::getInstance()->runDispatchLoopUntil (16); }
     auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 2.0f);
     juce::File out (argc > 1 ? argv[1] : "snapshot.png");
