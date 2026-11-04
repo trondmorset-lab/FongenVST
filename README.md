@@ -2,6 +2,10 @@
 
 # Fongen DynEQ
 
+If you like this app and want to support me:
+
+<a href="https://www.buymeacoffee.com/trondmorsej" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
 Dynamisk EQ og resonansdemper i VST3-format (og AU på Mac), i samme ånd som FabFilter Pro-Q og Soothe. Alt er IIR, så pluginen har **0 samples latens** og kan brukes live. Bygget med JUCE 9.0.5.
 
 ![Skjermbilde](screenshot.png)
